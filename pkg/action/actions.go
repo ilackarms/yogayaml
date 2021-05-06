@@ -16,29 +16,32 @@ var Pauser actionPauser
 type actionPauser struct {
 	lock   sync.RWMutex
 	pause  func()
-	resume func()
 	paused *atomic.Bool
 	tty    *tty.TTY
 }
 
 func StartPauser(tty *tty.TTY) {
 	Pauser = actionPauser{
-		tty: tty,
+		tty:    tty,
 		paused: atomic.NewBool(false),
 	}
 	go Pauser.run()
 }
 
-func (p *actionPauser) onPause(pause, resume func()) {
+func (p *actionPauser) onPause(pause func()) {
 	p.lock.Lock()
 	p.pause = pause
-	p.resume = resume
 	p.lock.Unlock()
 }
 
-func (p *actionPauser) waitUntilUnpaused() {
+func (p *actionPauser) waitUntilUnpaused(resume func()) {
+	var wasPaused bool
 	for p.paused.Load() {
 		time.Sleep(time.Millisecond * 50)
+		wasPaused = true
+	}
+	if wasPaused {
+		resume()
 	}
 }
 
@@ -51,19 +54,16 @@ func (p *actionPauser) run() {
 		}
 		p.lock.RLock()
 		pause := p.pause
-		resume := p.resume
 		p.lock.RUnlock()
 		if pause == nil {
 			SpeakAction{S: "no action, ignoring pause"}.Do()
 			continue
 		}
 		paused = !paused
-		fmt.Println("Paused => "+string(r), paused)
+		fmt.Println("Paused => ", string(r), paused)
 		p.paused.Store(paused)
 		if paused {
 			pause()
-		} else {
-			resume()
 		}
 	}
 }
@@ -80,12 +80,6 @@ type Action interface {
 	Do()
 }
 
-type PauseableAction interface {
-	Action
-	Pause()
-	Resume()
-}
-
 type NullAction struct{}
 
 func (a NullAction) Do() {}
@@ -95,84 +89,74 @@ func (a NullAction) Pause() {}
 func (a NullAction) Resume() {}
 
 type SpeakAction struct {
-	S         string
-	Cmd       *exec.Cmd
-	pauseLock sync.Mutex
+	S string
 }
 
 func (a SpeakAction) Do() {
 	log.Printf("%v", a.S)
 	cmd := exec.Command("espeak", a.S)
-	a.Cmd = cmd
 	if err := cmd.Start(); err != nil {
 		log.Fatal(err)
 	}
 	Pauser.onPause(
-		a.Pause,
-		a.Resume,
+		func() {
+			for cmd.Process == nil {
+				time.Sleep(time.Millisecond * 50)
+			}
+			if err := cmd.Process.Kill(); err != nil {
+				log.Fatal(err)
+			}
+		},
 	)
 
-	if err := a.Cmd.Wait(); err != nil {
+	if err := cmd.Wait(); err != nil {
 		//log.Printf("is this an err?: %v", err)
 	}
 
-	Pauser.waitUntilUnpaused()
-}
-
-func (a SpeakAction) Pause() {
-	for a.Cmd == nil || a.Cmd.Process == nil {
-		time.Sleep(time.Millisecond * 50)
-	}
-	if err := a.Cmd.Process.Kill(); err != nil {
-		log.Fatal(err)
-	}
-}
-
-func (a SpeakAction) Resume() {
-	// restart
-	a.Do()
+	Pauser.waitUntilUnpaused(func() {
+		// restart
+		SpeakAction{S: "resumed: " + a.S}.Do()
+	})
 }
 
 type SleepAction struct {
-	D         time.Duration
-	done      chan struct{}
-	startTime time.Time
-	remaining time.Duration
+	D time.Duration
 }
 
 func (a SleepAction) Do() {
 	log.Printf(">> sleep %v", a.D)
-	if a.D < 0 {
+	if a.D <= 0 {
 		return
 	}
-	log.Printf("%v", a.D)
+	started := time.Now()
 	tick := time.NewTicker(a.D)
-	a.startTime = time.Now()
-	a.done = make(chan struct{})
+	paused := make(chan struct{})
 	Pauser.onPause(
-		a.Pause,
-		a.Resume,
+		func() {
+			paused <- struct{}{}
+		},
 	)
-	// wait
-	select {
-	case <-a.done:
-	case <-tick.C:
+	for {
+		select {
+		case <-paused:
+			elapsed := time.Since(started)
+			remaining := a.D - elapsed
+			if remaining <= 0 {
+				// done
+				return
+			}
+			log.Printf("sleep: paused (%v elapsed, %v remaining)", elapsed, remaining)
+			// wait for unpause
+			Pauser.waitUntilUnpaused(func() {
+				log.Printf("sleep: unpaused")
+				tick = time.NewTicker(remaining)
+			})
+		case <-tick.C:
+			log.Printf("sleep: done")
+			// done
+			return
+		}
 	}
-	<-tick.C
-	Pauser.waitUntilUnpaused()
-}
-
-func (a SleepAction) Pause() {
-	a.remaining = a.D - (time.Now().Sub(a.startTime))
-	close(a.done)
-}
-
-func (a SleepAction) Resume() {
-	// restart
-	log.Printf("continuing sleep with %s", a.remaining)
-	SleepAction{
-		D: a.remaining,
-	}.Do()
 }
 
 type LoopingAction struct {
