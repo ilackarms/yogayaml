@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/ilackarms/yogayaml/pkg/action"
+	"github.com/ilackarms/yogayaml/pkg/model"
 	"github.com/ilackarms/yogayaml/pkg/sequences"
 	"github.com/mattn/go-tty"
 	"log"
@@ -11,6 +12,13 @@ import (
 	"syscall"
 	"time"
 )
+
+var Sequences = model.Sequence{
+	sequences.FunSimple(),
+	//sequences.LowBackHipsGlutes().Action().Do()
+	//sequences.WarriorSequence().Action().Do()
+	//sequences.UpperBackShoulders().Action().Do()
+}
 
 func main() {
 
@@ -26,9 +34,7 @@ func main() {
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		sequences.LowBackHipsGlutes().Action().Do()
-		sequences.WarriorSequence().Action().Do()
-		sequences.UpperBackShoulders().Action().Do()
+		Sequences.Action().Do()
 		close(done)
 	}()
 

@@ -4,27 +4,26 @@ import (
 	. "github.com/ilackarms/yogayaml/pkg/model"
 )
 
-func LyingOnBackWarmup() Sequence {
+func LyingOnBackWarmupToDownDog() Sequence {
 	return Sequence{
 		SpeakAndPause("Lie down on your back and breathe", 8),
 		SpeakAndPause("Morning stretch", 4),
-		InhaleExhale(3, 4, 6),
+		SpeakAndPause("Breathe here.", 8),
 		SpeakAndPause("Knees to your chest or happy baby", 4),
-		InhaleExhale(2, 4, 6),
-		SpeakAndPause("let your knees drop to the left", 4),
-		InhaleExhale(2, 4, 6),
-		SpeakAndPause("let your knees drop to the right", 4),
-		InhaleExhale(2, 4, 6),
-		SpeakAndPause("roll up to your knees. tabletop", 8),
+		SpeakAndPause("Breathe here.", 8),
+		SpeakAndPause("Exhale, Let your knees drop to the left", 6),
+		SpeakAndPause("Inhale back to center", 2),
+		SpeakAndPause("Let your knees drop to the right", 6),
+		SpeakAndPause("Inhale back to center", 2),
+		SpeakAndPause("rock gently along your spine", 3),
+		SpeakAndPause("roll up to a sitting position and press back to down dog", 8),
 	}
 }
 
 func LowBackHipsGlutes() Sequence {
 	return Sequence{
-		LyingOnBackWarmup(),
+		LyingOnBackWarmupToDownDog(),
 		SpeakAndPause("Low Back Hips Glutes. Starting from Tadasnaa", 5),
-		TadasanaToFold(),
-		DownDogFromFold(),
 		ChairFromDownDog(),
 		TadasanaFromFold(),
 		GoddessPoseFromTadasana(),

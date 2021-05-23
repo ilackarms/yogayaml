@@ -94,7 +94,7 @@ type SpeakAction struct {
 
 func (a SpeakAction) Do() {
 	log.Printf("%v", a.S)
-	cmd := exec.Command("espeak", a.S)
+	cmd := exec.Command("say", a.S)
 	if err := cmd.Start(); err != nil {
 		log.Fatal(err)
 	}
