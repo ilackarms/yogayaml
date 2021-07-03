@@ -4,8 +4,17 @@ import (
 	. "github.com/ilackarms/yogayaml/pkg/model"
 )
 
+func StartsWithFeet() Node {
+	return Sequence{
+		SpeakAndPause("Begin seated.", 4),
+		SpeakAndPause("Banda awareness. Breathing from the bottom up. Shoulders relax.", 4),
+		SpeakAndPause("", 4),
+	}
+}
+
 func FunSimple() Node {
 	return Sequence{
+		SpeakAndPause("Make your way into tadasana.", 6),
 		SpeakAndPause("Make your way into tadasana.", 6),
 		SpeakAndPause("Begin by setting an intention for your practice. Breathe and ground here.", 4),
 		TadasanaToFold(),

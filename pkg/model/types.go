@@ -17,6 +17,17 @@ type Node interface {
 	Skip() bool
 }
 
+// a node that does nothing
+type NoOpNode struct{}
+
+func (n NoOpNode) Action() action.Action {
+	return action.NullAction{}
+}
+
+func (n NoOpNode) Skip() bool {
+	return false
+}
+
 // used to restart a sequenec from a specific node
 type SkipPrevious struct{}
 

@@ -25,6 +25,17 @@ const (
 	Right Side = "right"
 )
 
+func DoIf(b bool, n ... Node) Node {
+	if !b {
+		return NoOpNode{}
+	}
+	sequence := Sequence{}
+	for _, node := range n {
+		sequence = append(sequence, node)
+	}
+	return sequence
+}
+
 func SpeakAndPause(speech string, pauseSec int64) Node {
 	return SpeechNode{
 		Template: speech,
